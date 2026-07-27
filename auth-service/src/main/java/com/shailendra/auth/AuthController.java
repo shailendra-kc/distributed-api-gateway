@@ -1,0 +1,7 @@
+package com.shailendra.auth;
+import io.jsonwebtoken.Jwts; import io.jsonwebtoken.security.Keys; import jakarta.validation.Valid; import jakarta.validation.constraints.NotBlank; import org.springframework.beans.factory.annotation.Value; import org.springframework.http.*; import org.springframework.web.bind.annotation.*; import javax.crypto.SecretKey; import java.nio.charset.StandardCharsets; import java.time.*; import java.util.*;
+@RestController @RequestMapping("/api/auth") public class AuthController { private final SecretKey key; public AuthController(@Value("${jwt.secret}")String s){key=Keys.hmacShaKeyFor(s.getBytes(StandardCharsets.UTF_8));}
+ public record LoginRequest(@NotBlank String username,@NotBlank String password){} public record TokenResponse(String accessToken,String tokenType,long expiresIn){}
+ @PostMapping("/login") public ResponseEntity<?> login(@Valid @RequestBody LoginRequest r){if(!r.password().equals("password"))return ResponseEntity.status(401).body(Map.of("message","Invalid credentials")); Instant now=Instant.now(), exp=now.plusSeconds(3600);String t=Jwts.builder().subject(r.username()).claim("roles",List.of("USER")).issuedAt(Date.from(now)).expiration(Date.from(exp)).signWith(key).compact();return ResponseEntity.ok(new TokenResponse(t,"Bearer",3600));}
+ @GetMapping("/health") public Map<String,String> health(){return Map.of("status","UP");}
+}

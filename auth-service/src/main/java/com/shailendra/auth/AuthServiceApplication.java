@@ -1,0 +1,1 @@
+package com.shailendra.auth; import org.springframework.boot.*; import org.springframework.boot.autoconfigure.*; @SpringBootApplication public class AuthServiceApplication{public static void main(String[]a){SpringApplication.run(AuthServiceApplication.class,a);}}

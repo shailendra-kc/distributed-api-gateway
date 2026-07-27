@@ -1,0 +1,49 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: gateway
+      POSTGRES_USER: gateway
+      POSTGRES_PASSWORD: gateway
+    ports: ["5432:5432"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gateway"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  redis:
+    image: redis:7.4-alpine
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+  auth-service:
+    build:
+      context: .
+      dockerfile: auth-service/Dockerfile
+    environment:
+      JWT_SECRET: ${JWT_SECRET:-change-this-development-secret-key-change-this-now}
+    ports: ["8081:8081"]
+  product-service:
+    build:
+      context: .
+      dockerfile: product-service/Dockerfile
+    ports: ["8082:8082"]
+  api-gateway:
+    build:
+      context: .
+      dockerfile: api-gateway/Dockerfile
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+      auth-service: {condition: service_started}
+      product-service: {condition: service_started}
+    environment:
+      DB_HOST: postgres
+      REDIS_HOST: redis
+      AUTH_SERVICE_URL: http://auth-service:8081
+      PRODUCT_SERVICE_URL: http://product-service:8082
+      JWT_SECRET: ${JWT_SECRET:-change-this-development-secret-key-change-this-now}
+    ports: ["8080:8080"]

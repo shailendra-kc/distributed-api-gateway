@@ -1,0 +1,61 @@
+server:
+  port: 8080
+spring:
+  application:
+    name: api-gateway
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: 6379
+  r2dbc:
+    url: r2dbc:postgresql://${DB_HOST:localhost}:5432/gateway
+    username: gateway
+    password: gateway
+  sql:
+    init:
+      mode: always
+  cloud:
+    gateway:
+      default-filters:
+        - AddResponseHeader=X-Gateway, distributed-api-gateway
+      routes:
+        - id: auth-route
+          uri: ${AUTH_SERVICE_URL:http://localhost:8081}
+          predicates:
+            - Path=/api/auth/**
+          filters:
+            - StripPrefix=0
+        - id: product-route
+          uri: ${PRODUCT_SERVICE_URL:http://localhost:8082}
+          predicates:
+            - Path=/api/products/**
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 10
+                redis-rate-limiter.burstCapacity: 20
+                redis-rate-limiter.requestedTokens: 1
+                key-resolver: "#{@clientKeyResolver}"
+            - name: CircuitBreaker
+              args:
+                name: productCircuitBreaker
+                fallbackUri: forward:/fallback/products,/fallback/generic
+            - Retry=2,GET,502,503
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,gateway
+  endpoint:
+    health:
+      show-details: always
+  tracing:
+    sampling:
+      probability: 1.0
+jwt:
+  secret: ${JWT_SECRET:change-this-development-secret-key-change-this-now}
+security:
+  public-paths: /api/auth/login,/api/auth/health,/actuator/health,/fallback/products,/fallback/generic
+logging:
+  pattern:
+    level: "%5p [${spring.application.name:},%X{traceId:-},%X{spanId:-}]"

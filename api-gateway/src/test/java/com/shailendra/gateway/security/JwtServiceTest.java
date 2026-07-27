@@ -1,0 +1,3 @@
+package com.shailendra.gateway.security;
+import io.jsonwebtoken.Jwts; import io.jsonwebtoken.security.Keys; import org.junit.jupiter.api.Test; import java.nio.charset.StandardCharsets; import java.util.Date; import static org.assertj.core.api.Assertions.assertThat;
+class JwtServiceTest { @Test void parsesValidToken(){String secret="change-this-development-secret-key-change-this-now"; String token=Jwts.builder().subject("user").expiration(new Date(System.currentTimeMillis()+60000)).signWith(Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8))).compact(); assertThat(new JwtService(secret).parse(token).getSubject()).isEqualTo("user");}}
